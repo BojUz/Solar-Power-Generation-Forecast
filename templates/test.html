@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8">
+  <title>Архив</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    label { margin-right: 10px; }
+    table { border-collapse: collapse; margin-top: 20px; width: 50%; }
+    table, th, td { border: 1px solid black; padding: 8px; text-align: center; }
+    #chartWrapper { width: 600px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Архивни данни</h1>
+
+  <label>Начална дата: 
+    <input type="date" id="startDate">
+  </label>
+  <label>Крайна дата: 
+    <input type="date" id="endDate">
+  </label>
+  <button onclick="loadArchive()">Покажи</button>
+  <button onclick="downloadArchive()">Свали CSV</button>
+
+  <div id="results">
+    <table id="archiveTable" style="display:none;">
+      <thead>
+        <tr><th>Час</th><th>Стойност</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div id="chartWrapper" style="display:none;">
+      <canvas id="archiveChart"></canvas>
+    </div>
+  </div>
+
+  <script>
+    let archiveChart = null;
+
+    function loadArchive() {
+      const start = document.getElementById("startDate").value;
+      const end = document.getElementById("endDate").value;
+
+      if (!start || !end) {
+        alert("Моля изберете и двете дати!");
+        return;
+      }
+
+      fetch(`/get-archive-data?start=${start}&end=${end}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) {
+            alert(data.error);
+            return;
+          }
+
+          // Попълваме таблицата
+          const tbody = document.querySelector("#archiveTable tbody");
+          tbody.innerHTML = "";
+          for (let time in data) {
+            tbody.innerHTML += `<tr><td>${time}</td><td>${data[time]}</td></tr>`;
+          }
+          document.getElementById("archiveTable").style.display = "table";
+
+          // Рисуваме графика
+          const ctx = document.getElementById("archiveChart").getContext("2d");
+          if (archiveChart) archiveChart.destroy();
+          archiveChart = new Chart(ctx, {
+            type: "line",
+            data: {
+              labels: Object.keys(data),
+              datasets: [{
+                label: "Стойности",
+                data: Object.values(data),
+                borderColor: "blue",
+                fill: false
+              }]
+            }
+          });
+          document.getElementById("chartWrapper").style.display = "block";
+        })
+        .catch(err => console.error(err));
+    }
+
+    function downloadArchive() {
+      const start = document.getElementById("startDate").value;
+      const end = document.getElementById("endDate").value;
+
+      if (!start || !end) {
+        alert("Моля изберете и двете дати!");
+        return;
+      }
+
+      window.location.href = `/download-archive-csv?start=${start}&end=${end}`;
+    }
+  </script>
+</body>
+</html>

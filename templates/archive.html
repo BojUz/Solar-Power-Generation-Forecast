@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8">
+  <title>Архив</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="/static/styles/style.css" rel= "stylesheet" type= "text/css" />
+  <link rel="icon" type="image/x-icon" href="static/logo3.png">
+  <style>
+  
+    label { margin-right: 10px; }
+    table { border-collapse: collapse; margin-top: 20px; width: 50%; }
+    table, th, td { border: 1px solid black; padding: 8px; text-align: center; }
+    #chartWrapper { width: 600px; margin-top: 20px; }
+    #textXY {display: none;}
+  </style>
+</head>
+<body>
+    <header>
+        <div class="logo"><a  style="text-decoration: none; color: inherit; " href="http://127.0.0.1:5000"><img src="static/logo3.png">  Solar power forecast </a></div>
+        <nav>
+          <ul class="nav-links">
+            <li><a href="http://127.0.0.1:5000">Home</a></li>
+            <li><a href="http://127.0.0.1:5000/aboutUs">About us</a></li>
+            <li><a href="http://127.0.0.1:5000/archive">Archive</a></li>
+            <li><a href="http://127.0.0.1:5000/contacts">Contacts</a></li>
+          </ul>
+        </nav>
+         {% if session.get("user_id") %}
+            <a href="{{ url_for('logout') }}" class="btn">Log out</a>
+        {% else %}
+            <a href="http://127.0.0.1:5000/l" class="btn">Log in</a>
+        {% endif %}
+        
+        <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+      </header>
+<h2>Архив на стойности</h2>
+
+<div id="controls">
+  <label>
+    Начална дата:
+    <input type="date" id="startDate" onkeydown="return false;">
+  </label>
+
+  <label>
+    Крайна дата:
+    <input type="date" id="endDate" onkeydown="return false;">
+  </label>
+
+  <button id="loadArchiveBtn" onclick="loadArchive()">Зареди</button>
+  <a id="downloadBtn" href="#" style="display:none;"><button>Свали CSV</button></a>
+</div>
+
+<div id="loading" style="display:none; margin-top:10px;">Зареждане...</div>
+
+<div id="archiveResults" style="margin-top:20px;"></div>
+<canvas id="archiveChart" width="600" height="300"></canvas>
+<h4 id="textXY">X- Часове, Y- Прогнозирано производство</h4>
+<footer>2025 Solar Power Forecast</footer>
+<script>
+function toggleMenu() {
+  const nav = document.querySelector(".nav-links");
+  nav.classList.toggle("active");
+}
+
+function setLoading(isLoading) {
+  const btn = document.getElementById("loadArchiveBtn");
+  const start = document.getElementById("startDate");
+  const end = document.getElementById("endDate");
+  const loadingDiv = document.getElementById("loading");
+
+  btn.disabled = isLoading;
+  start.disabled = isLoading;
+  end.disabled = isLoading;
+  loadingDiv.style.display = isLoading ? "block" : "none";
+}
+
+// 🟢 ограничаваме датите
+window.addEventListener("DOMContentLoaded", () => {
+  const startInput = document.getElementById("startDate");
+  const endInput = document.getElementById("endDate");
+
+  const minDate = "2024-06-23"; // фиксирана минимална дата
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  const todayStr = today.toISOString().split("T")[0];
+  const tomorrowStr = tomorrow.toISOString().split("T")[0];
+
+  // ограничаваме
+  startInput.min = minDate;
+  startInput.max = tomorrowStr;
+  endInput.min = minDate;
+  endInput.max = tomorrowStr;
+
+  // 🟢 задаваме стойности по подразбиране
+  startInput.value = todayStr;
+  endInput.value = tomorrowStr;
+});
+
+// 🟢 автоматично endDate >= startDate
+document.getElementById("startDate").addEventListener("change", () => {
+  const start = document.getElementById("startDate").value;
+  document.getElementById("endDate").min = start;
+});
+
+function loadArchive() {
+  const start = document.getElementById("startDate").value;
+  const end = document.getElementById("endDate").value;
+
+  if (!start || !end) {
+    alert("Моля изберете начална и крайна дата!");
+    return;
+  }
+  if (end < start) {
+    alert("Крайната дата не може да е преди началната!");
+    return;
+  }
+
+  setLoading(true);
+
+  fetch(`/get-archive-data?start=${start}&end=${end}`)
+    .then(r => r.json())
+    .then(data => {
+      // таблица
+      let html = "<table border='1'><tr><th>Дата и час</th><th>Произведена енергия</th></tr>";
+      for (let date in data) {
+        
+          html += `<tr><td>${date}</td><td>${data[date]}</td></tr>`;
+        
+      }
+      html += "</table>";
+      document.getElementById("archiveResults").innerHTML = html;
+
+      // chart
+      const ctx = document.getElementById("archiveChart").getContext("2d");
+      if (window.archiveChartInstance) {
+        window.archiveChartInstance.destroy();
+      }
+      const labels = [];
+      const values = [];
+      for (let date in data) {
+        
+          labels.push(`${date}`);
+          values.push(data[date]);
+        
+      }
+      window.archiveChartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "Архивни стойности",
+            data: values,
+            borderColor: "green",
+            fill: false
+          }]
+        }
+      });
+
+      // бутон за сваляне
+      document.getElementById("textXY").style.display = "block";
+      document.getElementById("downloadBtn").style.display = "block";
+      document.getElementById("downloadBtn").href = `/download-archive-csv?start=${start}&end=${end}`;
+    })
+    .catch(err => {
+      console.error("Грешка:", err);
+      document.getElementById("archiveResults").innerHTML = "⚠️ Възникна грешка при зареждане";
+    })
+    .finally(() => {
+      setLoading(false);
+    });
+}
+</script>
