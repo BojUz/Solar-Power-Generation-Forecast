@@ -42,18 +42,18 @@ main {
 <body>
    <header>
         <div class="logo"><a  style="text-decoration: none; color: inherit; " href="http://127.0.0.1:5000"><img src="static/logo3.png">  Solar power forecast </a></div>
-        <nav>
+                <nav>
           <ul class="nav-links">
-            <li><a href="http://127.0.0.1:5000">Home</a></li>
-            <li><a href="http://127.0.0.1:5000/aboutUs">About us</a></li>
-            <li><a href="http://127.0.0.1:5000/archive">Archive</a></li>
-            <li><a href="http://127.0.0.1:5000/contacts">Contacts</a></li>
+            <li><a href="{{ url_for('home') }}">Home</a></li>
+            <li><a href="{{ url_for('aboutUs') }}">About us</a></li>
+            <li><a href="{{ url_for('archive_page') }}">Archive</a></li>
+            <li><a href="{{ url_for('contact') }}">Contacts</a></li>
           </ul>
         </nav>
          {% if session.get("user_id") %}
             <a href="{{ url_for('logout') }}" class="btn">Log out</a>
         {% else %}
-            <a href="http://127.0.0.1:5000/l" class="btn">Log in</a>
+            <a href="{{ url_for('log') }}" class="btn">Log in</a>
         {% endif %}
         
         <button class="menu-toggle" onclick="toggleMenu()">☰</button>
