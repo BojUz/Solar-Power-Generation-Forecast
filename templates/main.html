@@ -327,62 +327,64 @@ function fetchWithTimeout(resource, options = {}) {
   ]);
 }
 
+// Глобална опашка
+let requestQueue = Promise.resolve();
+
+function queueRequest(task) {
+  requestQueue = requestQueue.then(task).catch(err => {
+    console.error("Грешка в заявка:", err);
+  });
+}
+
+
 function updateTable() {
   const date1 = document.getElementById("datePicker").value;
-  // Деактивираме input-ите
 
-  datePicker.disabled = true;
+  queueRequest(() => {
+    // заключване
+    datePicker.disabled = true;
+    hourSlider.disabled = true;
+    document.getElementById("tableLoading").style.display = "flex";
+    document.getElementById("chartLoading").style.display = "flex";
 
-  hourSlider.disabled = true;
-  // показваме overlay-и
-  document.getElementById("tableLoading").style.display = "flex";
-  document.getElementById("chartLoading").style.display = "flex";
+    document.getElementById("valuesTable").innerHTML = "";
+    if (chartInstance) {
+      chartInstance.destroy();
+      chartInstance = null;
+    }
 
-  // чистим старите данни
-  document.getElementById("valuesTable").innerHTML = "";
-  if (chartInstance) {
-    chartInstance.destroy();
-    chartInstance = null;
-  }
-
-  fetch(`/get-values?date=${date1}`)
-    .then(r => r.json())
-    .then(data => {
-      // попълваме таблицата
-      let tbody = document.getElementById("valuesTable");
-      for (let time in data) {
-        tbody.innerHTML += `<tr><td>${time}</td><td>${data[time]} MW/h </td></tr>`;
-      }
-
-      // попълваме chart-а
-      let ctx = document.getElementById("chart1").getContext("2d");
-      chartInstance = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: Object.keys(data),
-          datasets: [{
-            label: "Стойности",
-            data: Object.values(data),
-            borderColor: "blue",
-            fill: false
-          }]
+    return fetch(`/get-values?date=${date1}`)
+      .then(r => r.json())
+      .then(data => {
+        let tbody = document.getElementById("valuesTable");
+        for (let time in data) {
+          tbody.innerHTML += `<tr><td>${time}</td><td>${data[time]} MW/h </td></tr>`;
         }
+
+        let ctx = document.getElementById("chart1").getContext("2d");
+        chartInstance = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: Object.keys(data),
+            datasets: [{
+              label: "Стойности",
+              data: Object.values(data),
+              borderColor: "blue",
+              fill: false
+            }]
+          }
+        });
+      })
+      .finally(() => {
+        document.getElementById("tableLoading").style.display = "none";
+        document.getElementById("chartLoading").style.display = "none";
+        datePicker.disabled = false;
+        hourSlider.disabled = false;
       });
-    })
-    .catch(err => {
-      console.error("Грешка при fetch:", err);
-      document.getElementById("valuesTable").innerHTML =
-        `<tr><td colspan="2">Error loading data</td></tr>`;
-    })
-    .finally(() => {
-      // скриваме overlay-ите
-      document.getElementById("tableLoading").style.display = "none";
-      document.getElementById("chartLoading").style.display = "none";
-      
-      datePicker.disabled = false;
-      hourSlider.disabled = false;
-    });
+  });
 }
+
+
         const flashes = document.getElementById("flash");
 
 
@@ -409,13 +411,10 @@ function downloadCSV() {
 function pad(n) { return (Number(n) < 10 ? "0" + Number(n) : String(n)); }
 
 function updateImage() {
-  const dateInput = document.getElementById("datePicker").value; // yyyy-mm-dd
-  const hour = parseInt(document.getElementById("hourSlider").value);
-  datePicker.disabled = true;
+  const date = document.getElementById("datePicker").value;
+  const hour = document.getElementById("hourSlider").value.padStart(2, "0");
 
-  hourSlider.disabled = true;
-  // Връщаме 3 часа назад
-  let targetDate = new Date(dateInput + "T" + pad(hour) + ":00:00");
+  let targetDate = new Date(date + "T" + pad(hour) + ":00:00");
   targetDate.setHours(targetDate.getHours() - 3);
 
   const yyyy = targetDate.getFullYear();
@@ -426,37 +425,39 @@ function updateImage() {
   const hourCompact = pad(targetDate.getHours());
 
   const url = `https://data.ventusky.com/${yyyy}/${mm}/${dd}/aladin/whole_world/${hourStr}/aladin_oblacnost_${dateCompact}_${hourCompact}.jpg`;
-
+  console.log(url)
 
   document.getElementById("weatherImage").src = url;
-
   document.getElementById("hourLabel").textContent = `${pad(hour)}:00`;
 
-  /**888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888*/
-  const date = document.getElementById("datePicker").value; // YYYY-MM-DD
-  const hour1 = document.getElementById("hourSlider").value.padStart(2, '0');
+  queueRequest(() => {
+    datePicker.disabled = true;
+    hourSlider.disabled = true;
+    
 
-  const loading = document.getElementById("loadingMessage");
-  const img = document.getElementById("resultImage");
+    const loading = document.getElementById("loadingMessage");
+    const img = document.getElementById("resultImage");
+    loading.style.display = "block";
+    img.style.display = "none";
 
-  loading.style.display = "block";
-  img.style.display = "none";
-
-  fetch(`/get_picture?date=${date}&hour=${hour1}`)
-    .then(r => r.json())
-    .then(data => {
-      if (data.status === "ready") {
-        img.src = `/results/${data.filename}?t=${Date.now()}`; // добавяме timestamp за да не кешира
-        img.style.display = "block";
-        loading.style.display = "none";
-      } else {
-        loading.textContent = "Error loading image";
-      }
-    });
-    datePicker.disabled = false;
-
-  hourSlider.disabled = false;
+    return fetch(`/get_picture?date=${date}&hour=${hour}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === "ready") {
+          img.src = `/results/${data.filename}?t=${Date.now()}`;
+          img.style.display = "block";
+          loading.style.display = "none";
+        } else {
+          loading.textContent = "Error loading image";
+        }
+      })
+      .finally(() => {
+        datePicker.disabled = false;
+        hourSlider.disabled = false;
+      });
+  });
 }
+
 
 
 document.getElementById("datePicker").addEventListener("change", updateImage);

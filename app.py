@@ -59,8 +59,8 @@ def home():
         #return render_template("dashboard.html")
         #print(latest_image)
         #return render_template("main.html", image_file="images/" + latest_image)
-        return render_template("test.html")
-    return render_template("test.html")
+        return render_template("main.html")
+    return render_template("main.html")
 
 @app.route("/contacts", methods=["GET", "POST"])
 def contact():
