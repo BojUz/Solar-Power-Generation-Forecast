@@ -59,8 +59,8 @@ def home():
         #return render_template("dashboard.html")
         #print(latest_image)
         #return render_template("main.html", image_file="images/" + latest_image)
-        return render_template("main.html")
-    return render_template("main.html")
+        return render_template("test.html")
+    return render_template("test.html")
 
 @app.route("/contacts", methods=["GET", "POST"])
 def contact():
@@ -283,5 +283,5 @@ def serve_image(filename):
 
 
 if __name__ == "__main__":
-    #app.run(debug=True)
-    waitress.serve(app, host="0.0.0.0", port=5000)
+    app.run(debug=True)
+    #waitress.serve(app, host="0.0.0.0", port=5000)
