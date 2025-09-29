@@ -1,7 +1,7 @@
 def getCloudPicture(date ,hour):
     import numpy as np
     import cv2 
-    import pyautogui
+    #import pyautogui
     import time
     from PIL import Image
     import PIL.ImageOps 

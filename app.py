@@ -24,8 +24,8 @@ app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder='static')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # da go premestq v drug fail za da ne se vijda secKey-a
-app.secret_key = "supersecretkey" 
-#app.secret_key = "539e18964bde2989c65c66df" 
+#app.secret_key = "supersecretkey" 
+app.secret_key = "539e18964bde2989c65c66df" 
 db = SQLAlchemy(app)
 
 class User(db.Model):
